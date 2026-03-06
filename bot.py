@@ -33,22 +33,31 @@ def get_ohlcv():
         "limit": 200
     }
 
-    data = requests.get(url, params=params).json()
+    response = requests.get(url, params=params)
+    data = response.json()
 
-    df = pd.DataFrame(data)[[0,1,2,3,4,5]]
+    # If Binance returns an error
+    if not isinstance(data, list):
+        print("Binance API error:", data)
+        return None
+
+    df = pd.DataFrame(data)
+
+    df = df.iloc[:, :6]
 
     df.columns = ["time","open","high","low","close","volume"]
 
     df["time"] = pd.to_datetime(df["time"], unit="ms")
 
-    df["open"] = df["open"].astype(float)
-    df["high"] = df["high"].astype(float)
-    df["low"] = df["low"].astype(float)
-    df["close"] = df["close"].astype(float)
-    df["volume"] = df["volume"].astype(float)
+    df = df.astype({
+        "open": float,
+        "high": float,
+        "low": float,
+        "close": float,
+        "volume": float
+    })
 
     return df
-
 
 print("Crypto alert bot started...")
 
@@ -62,6 +71,10 @@ while True:
     try:
 
         df = get_ohlcv()
+
+        if df is None:
+            time.sleep(60)
+            continue
 
         # EMA & SMA
         df["ema7"] = ta.ema(df["close"], length=7)
