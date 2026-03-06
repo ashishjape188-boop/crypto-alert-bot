@@ -8,8 +8,8 @@ import os
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-symbol = "ETHUSDT"
-interval = "30m"
+coin_id = "ethereum"   # ETH
+vs_currency = "usd"
 
 def send_alert(message):
 
@@ -23,41 +23,33 @@ def send_alert(message):
     requests.post(url, data=data)
 
 
-def get_ohlcv():
+def get_price_data():
 
-    url = "https://api.binance.com/api/v3/klines"
+    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
 
     params = {
-        "symbol": symbol,
-        "interval": interval,
-        "limit": 200
+        "vs_currency": vs_currency,
+        "days": 2,
+        "interval": "minute"
     }
 
     response = requests.get(url, params=params)
     data = response.json()
 
-    # If Binance returns an error
-    if not isinstance(data, list):
-        print("Binance API error:", data)
-        return None
+    prices = data["prices"]
 
-    df = pd.DataFrame(data)
-
-    df = df.iloc[:, :6]
-
-    df.columns = ["time","open","high","low","close","volume"]
+    df = pd.DataFrame(prices, columns=["time","close"])
 
     df["time"] = pd.to_datetime(df["time"], unit="ms")
 
-    df = df.astype({
-        "open": float,
-        "high": float,
-        "low": float,
-        "close": float,
-        "volume": float
-    })
+    # create OHLC approximation
+    df["open"] = df["close"]
+    df["high"] = df["close"]
+    df["low"] = df["close"]
+    df["volume"] = 0
 
     return df
+
 
 print("Crypto alert bot started...")
 
@@ -70,30 +62,17 @@ while True:
 
     try:
 
-        df = get_ohlcv()
+        df = get_price_data()
 
-        if df is None:
-            time.sleep(60)
-            continue
-
-        # EMA & SMA
+        # indicators
         df["ema7"] = ta.ema(df["close"], length=7)
         df["sma7"] = ta.sma(df["close"], length=7)
 
-        # CCI
         df["cci"] = ta.cci(df["high"], df["low"], df["close"], length=60)
-
-        # CCI moving average
         df["cci_ma"] = ta.sma(df["cci"], length=7)
 
         last = df.iloc[-1]
         prev = df.iloc[-2]
-
-        candle_time = last["time"]
-
-        if candle_time != last_candle_time:
-            last_candle_time = candle_time
-            alert_count = 0
 
         price = last["close"]
 
@@ -122,7 +101,7 @@ while True:
 
             message = f"""
 🚀 BUY SIGNAL
-Symbol: ETHUSDT
+Symbol: ETH
 Price: {price}
 CCI crossed above CCI-MA
 """
@@ -137,7 +116,7 @@ CCI crossed above CCI-MA
 
             message = f"""
 🔻 SELL SIGNAL
-Symbol: ETHUSDT
+Symbol: ETH
 Price: {price}
 CCI crossed below CCI-MA
 """
