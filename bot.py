@@ -36,6 +36,11 @@ def get_price_data():
     response = requests.get(url, params=params)
     data = response.json()
 
+    # Check if prices exist
+    if "prices" not in data:
+        print("CoinGecko API error:", data)
+        return None
+
     prices = data["prices"]
 
     df = pd.DataFrame(prices, columns=["time","close"])
@@ -50,7 +55,6 @@ def get_price_data():
 
     return df
 
-
 print("Crypto alert bot started...")
 
 last_candle_time = None
@@ -63,6 +67,10 @@ while True:
     try:
 
         df = get_price_data()
+
+        if df is None:
+            time.sleep(60)
+            continue
 
         # indicators
         df["ema7"] = ta.ema(df["close"], length=7)
