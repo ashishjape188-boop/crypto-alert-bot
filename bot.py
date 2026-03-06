@@ -1,4 +1,3 @@
-import ccxt
 import pandas as pd
 import pandas_ta as ta
 import requests
@@ -9,11 +8,8 @@ import os
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-# EXCHANGE
-exchange = ccxt.binance()
-
-symbol = "ETH/USDT"
-timeframe = "30m"
+symbol = "ETHUSDT"
+interval = "30m"
 
 def send_alert(message):
 
@@ -27,6 +23,33 @@ def send_alert(message):
     requests.post(url, data=data)
 
 
+def get_ohlcv():
+
+    url = "https://api.binance.com/api/v3/klines"
+
+    params = {
+        "symbol": symbol,
+        "interval": interval,
+        "limit": 200
+    }
+
+    data = requests.get(url, params=params).json()
+
+    df = pd.DataFrame(data)[[0,1,2,3,4,5]]
+
+    df.columns = ["time","open","high","low","close","volume"]
+
+    df["time"] = pd.to_datetime(df["time"], unit="ms")
+
+    df["open"] = df["open"].astype(float)
+    df["high"] = df["high"].astype(float)
+    df["low"] = df["low"].astype(float)
+    df["close"] = df["close"].astype(float)
+    df["volume"] = df["volume"].astype(float)
+
+    return df
+
+
 print("Crypto alert bot started...")
 
 last_candle_time = None
@@ -38,12 +61,7 @@ while True:
 
     try:
 
-        bars = exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=200)
-
-        df = pd.DataFrame(
-            bars,
-            columns=["time","open","high","low","close","volume"]
-        )
+        df = get_ohlcv()
 
         # EMA & SMA
         df["ema7"] = ta.ema(df["close"], length=7)
@@ -60,14 +78,12 @@ while True:
 
         candle_time = last["time"]
 
-        # Reset alert counter when new candle appears
         if candle_time != last_candle_time:
             last_candle_time = candle_time
             alert_count = 0
 
         price = last["close"]
 
-        # BUY SIGNAL
         buy_signal = (
             price > last["ema7"] and
             price > last["sma7"] and
@@ -75,7 +91,6 @@ while True:
             last["cci"] > last["cci_ma"]
         )
 
-        # SELL SIGNAL
         sell_signal = (
             price < last["ema7"] and
             price < last["sma7"] and
