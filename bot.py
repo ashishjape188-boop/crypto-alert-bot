@@ -29,14 +29,12 @@ def get_price_data():
 
     params = {
         "vs_currency": vs_currency,
-        "days": 2,
-        "interval": "minute"
+        "days": 1
     }
 
     response = requests.get(url, params=params)
     data = response.json()
 
-    # Check if prices exist
     if "prices" not in data:
         print("CoinGecko API error:", data)
         return None
@@ -54,7 +52,6 @@ def get_price_data():
     df["volume"] = 0
 
     return df
-
 print("Crypto alert bot started...")
 
 last_candle_time = None
