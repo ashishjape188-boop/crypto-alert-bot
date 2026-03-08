@@ -9,7 +9,10 @@ import os
 # ==========================
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_IDS = os.getenv("CHAT_IDS").split(",")
+CHAT_IDS = [
+    os.getenv("CHAT_ID"),
+    os.getenv("CHAT_ID_2")
+]
 
 def send_alert(message):
 
