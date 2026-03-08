@@ -9,20 +9,20 @@ import os
 # ==========================
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = [os.getenv("CHAT_ID"),
-           os.getenv("CHAT_ID_2"),
-          os.getenv("CHAT_ID_3")]
+CHAT_IDS = os.getenv("CHAT_IDS").split(",")
 
 def send_alert(message):
 
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
-    data = {
-        "chat_id": CHAT_ID,
-        "text": message
-    }
-
-    requests.post(url, data=data)
+    for chat_id in CHAT_IDS:
+        requests.post(
+            url,
+            data={
+                "chat_id": chat_id.strip(),
+                "text": message
+            }
+        )
 
 
 print("Crypto alert bot started...")
@@ -66,7 +66,7 @@ while True:
         # ==========================
 
         end = int(time.time())
-        start = end - 200*1800   # 200 candles (30m)
+        start = end - 200 * 1800   # 200 candles of 30m
 
         url = "https://api.delta.exchange/v2/history/candles"
 
@@ -84,9 +84,7 @@ while True:
 
         df = pd.DataFrame(candles)
 
-        df = df.rename(columns={
-            "time": "Open_time"
-        })
+        df = df.rename(columns={"time": "Open_time"})
 
         df["Open_time"] = pd.to_datetime(df["Open_time"], unit='s')
 
@@ -97,6 +95,7 @@ while True:
         # ==========================
 
         df["hlc3"] = (df["high"] + df["low"] + df["close"]) / 3
+
         df["ma"] = df["hlc3"].rolling(window=60).mean()
 
         df["mean_dev"] = df["hlc3"].rolling(window=60).apply(
@@ -115,44 +114,54 @@ while True:
 
         df["Diff_CCI"] = df["CCI_60"] - df["CCI_EMA"]
 
+        # ==========================
+        # LAST CANDLE DATA
+        # ==========================
+
         last = df.iloc[-1]
 
-           candle_time = (last["Open_time"] + pd.Timedelta(hours=5, minutes=30)).strftime("%d-%b %H:%M IST")
+        candle_time = (last["Open_time"] + pd.Timedelta(hours=5, minutes=30)).strftime("%d-%b %H:%M IST")
 
-           open_price = round(last["open"],2)
-           high_price = round(last["high"],2)
-           low_price = round(last["low"],2)
-           close_price = round(last["close"],2)
+        open_price = round(last["open"], 2)
+        high_price = round(last["high"], 2)
+        low_price = round(last["low"], 2)
+        close_price = round(last["close"], 2)
 
-           price = last["close"]
-
-        candle_time = last["Open_time"]
-
-        if candle_time != last_candle_time:
-            last_candle_time = candle_time
-            alert_count = 0
+        rsi_val = round(last["RSI"], 2)
+        cci_val = round(last["CCI_60"], 2)
+        diff_val = round(last["Diff_CCI"], 2)
 
         price = last["close"]
 
+        # ==========================
+        # SIGNAL LOGIC
+        # ==========================
+
+        candle_time_check = last["Open_time"]
+
+        if candle_time_check != last_candle_time:
+            last_candle_time = candle_time_check
+            alert_count = 0
+
         buy_signal = (
-            last["CCI_60"] > last["CCI_EMA"] and
-            abs(last["Diff_CCI"]) > 4 and
-            price > last["SMA7"] and
-            price > last["EMA7"]
+            last["CCI_60"] > last["CCI_EMA"]
+            and abs(last["Diff_CCI"]) > 4
+            and price > last["SMA7"]
+            and price > last["EMA7"]
         )
 
         sell_signal = (
-            last["CCI_60"] < last["CCI_EMA"] and
-            abs(last["Diff_CCI"]) > 4 and
-            price < last["SMA7"] and
-            price < last["EMA7"]
+            last["CCI_60"] < last["CCI_EMA"]
+            and abs(last["Diff_CCI"]) > 4
+            and price < last["SMA7"]
+            and price < last["EMA7"]
         )
 
         current_time = time.time()
 
         allow_alert = (
-            alert_count < 2 and
-            current_time - last_alert_time >= 900
+            alert_count < 2
+            and current_time - last_alert_time >= 900
         )
 
         # ==========================
@@ -161,7 +170,7 @@ while True:
 
         if buy_signal and allow_alert:
 
-            message = message = f"""
+            message = f"""
 🚀 LONG SIGNAL
 
 ETHUSDT | 30m
@@ -194,7 +203,7 @@ CCI Diff : {diff_val}
 
         if sell_signal and allow_alert:
 
-            message = message = f"""
+            message = f"""
 🔻 SHORT SIGNAL
 
 ETHUSDT | 30m
@@ -218,11 +227,16 @@ CCI Diff : {diff_val}
 ━━━━━━━━━━━━━━━━
 ⚡ Strategy: CCI + EMA + SMA
 """
+
             send_alert(message)
 
             alert_count += 1
             last_alert_time = current_time
 
+
+        # ==========================
+        # WAIT
+        # ==========================
 
         time.sleep(120)
 
@@ -230,4 +244,5 @@ CCI Diff : {diff_val}
     except Exception as e:
 
         print("Error:", e)
+
         time.sleep(60)
