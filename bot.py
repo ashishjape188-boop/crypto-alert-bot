@@ -116,16 +116,15 @@ while True:
         df["Diff_CCI"] = df["CCI_60"] - df["CCI_EMA"]
 
         last = df.iloc[-1]
+
            candle_time = (last["Open_time"] + pd.Timedelta(hours=5, minutes=30)).strftime("%d-%b %H:%M IST")
 
-open_price = round(last["open"],2)
-high_price = round(last["high"],2)
-low_price = round(last["low"],2)
-close_price = round(last["close"],2)
+           open_price = round(last["open"],2)
+           high_price = round(last["high"],2)
+           low_price = round(last["low"],2)
+           close_price = round(last["close"],2)
 
-rsi_val = round(last["RSI"],2)
-cci_val = round(last["CCI_60"],2)
-diff_val = round(last["Diff_CCI"],2)
+           price = last["close"]
 
         candle_time = last["Open_time"]
 
