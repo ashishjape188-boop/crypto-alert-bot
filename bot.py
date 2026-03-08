@@ -1,4 +1,3 @@
-from binance.client import Client
 import pandas as pd
 import numpy as np
 import requests
@@ -8,6 +7,7 @@ import os
 # ==========================
 # TELEGRAM SETTINGS
 # ==========================
+
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
@@ -22,15 +22,10 @@ def send_alert(message):
 
     requests.post(url, data=data)
 
-# ==========================
-# BINANCE CLIENT
-# ==========================
-client = Client()
-
-symbol = "ETHUSDT"
-interval = Client.KLINE_INTERVAL_30MINUTE
 
 print("Crypto alert bot started...")
+
+symbol = "ETHUSDT"
 
 last_candle_time = None
 alert_count = 0
@@ -40,6 +35,7 @@ last_alert_time = 0
 # ==========================
 # RSI FUNCTION
 # ==========================
+
 def calculate_rsi(series, length=14):
 
     delta = series.diff()
@@ -64,35 +60,41 @@ while True:
     try:
 
         # ==========================
-        # FETCH DATA (like code 2)
+        # FETCH DATA FROM DELTA
         # ==========================
 
-        klines = client.get_historical_klines(
-            symbol,
-            interval,
-            limit=200
-        )
+        end = int(time.time())
+        start = end - 200*1800   # 200 candles (30m)
 
-        columns = [
-            "Open_time","Open","High","Low","Close","Volume",
-            "Close_time","Quote_asset_volume","Number_of_trades",
-            "Taker_buy_base","Taker_buy_quote","Ignore"
-        ]
+        url = "https://api.delta.exchange/v2/history/candles"
 
-        df = pd.DataFrame(klines, columns=columns)
+        params = {
+            "symbol": symbol,
+            "resolution": "30m",
+            "start": start,
+            "end": end
+        }
 
-        df["Open_time"] = pd.to_datetime(df["Open_time"], unit='ms')
+        response = requests.get(url, params=params)
+        data = response.json()
 
-        for col in ["Open","High","Low","Close","Volume"]:
-            df[col] = df[col].astype(float)
+        candles = data["result"]
 
-        df = df[['Open_time','Open','High','Low','Close','Volume','Number_of_trades']]
+        df = pd.DataFrame(candles)
+
+        df = df.rename(columns={
+            "time": "Open_time"
+        })
+
+        df["Open_time"] = pd.to_datetime(df["Open_time"], unit='s')
+
+        df = df.sort_values("Open_time")
 
         # ==========================
         # INDICATORS
         # ==========================
 
-        df["hlc3"] = (df["High"] + df["Low"] + df["Close"]) / 3
+        df["hlc3"] = (df["high"] + df["low"] + df["close"]) / 3
         df["ma"] = df["hlc3"].rolling(window=60).mean()
 
         df["mean_dev"] = df["hlc3"].rolling(window=60).apply(
@@ -104,19 +106,14 @@ while True:
 
         df["CCI_EMA"] = df["CCI_60"].ewm(span=7, adjust=False).mean()
 
-        df["SMA7"] = df["Close"].rolling(window=7).mean()
-        df["EMA7"] = df["Close"].ewm(span=7, adjust=False).mean()
+        df["SMA7"] = df["close"].rolling(window=7).mean()
+        df["EMA7"] = df["close"].ewm(span=7, adjust=False).mean()
 
-        df["RSI"] = calculate_rsi(df["Close"])
+        df["RSI"] = calculate_rsi(df["close"])
 
         df["Diff_CCI"] = df["CCI_60"] - df["CCI_EMA"]
 
-        # ==========================
-        # SIGNAL LOGIC (code 2)
-        # ==========================
-
         last = df.iloc[-1]
-        prev = df.iloc[-2]
 
         candle_time = last["Open_time"]
 
@@ -124,7 +121,7 @@ while True:
             last_candle_time = candle_time
             alert_count = 0
 
-        price = last["Close"]
+        price = last["close"]
 
         buy_signal = (
             last["CCI_60"] > last["CCI_EMA"] and
