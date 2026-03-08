@@ -116,6 +116,16 @@ while True:
         df["Diff_CCI"] = df["CCI_60"] - df["CCI_EMA"]
 
         last = df.iloc[-1]
+           candle_time = (last["Open_time"] + pd.Timedelta(hours=5, minutes=30)).strftime("%d-%b %H:%M IST")
+
+open_price = round(last["open"],2)
+high_price = round(last["high"],2)
+low_price = round(last["low"],2)
+close_price = round(last["close"],2)
+
+rsi_val = round(last["RSI"],2)
+cci_val = round(last["CCI_60"],2)
+diff_val = round(last["Diff_CCI"],2)
 
         candle_time = last["Open_time"]
 
@@ -152,14 +162,29 @@ while True:
 
         if buy_signal and allow_alert:
 
-            message = f"""
-🚀 LONG ENTRY
-Symbol: ETHUSDT
-Price: {price}
+            message = message = f"""
+🚀 LONG SIGNAL
 
-CCI crossed above EMA
-Diff CCI: {round(last["Diff_CCI"],2)}
-RSI: {round(last["RSI"],2)}
+ETHUSDT | 30m
+━━━━━━━━━━━━━━━━
+
+🕒 Candle : {candle_time}
+
+📈 Open   : {open_price}
+📈 High   : {high_price}
+📉 Low    : {low_price}
+📊 Close  : {close_price}
+
+━━━━━━━━━━━━━━━━
+
+📊 Indicators
+
+RSI      : {rsi_val}
+CCI      : {cci_val}
+CCI Diff : {diff_val}
+
+━━━━━━━━━━━━━━━━
+⚡ Strategy: CCI + EMA + SMA
 """
 
             send_alert(message)
@@ -170,16 +195,30 @@ RSI: {round(last["RSI"],2)}
 
         if sell_signal and allow_alert:
 
-            message = f"""
-🔻 SHORT ENTRY
-Symbol: ETHUSDT
-Price: {price}
+            message = message = f"""
+🔻 SHORT SIGNAL
 
-CCI crossed below EMA
-Diff CCI: {round(last["Diff_CCI"],2)}
-RSI: {round(last["RSI"],2)}
+ETHUSDT | 30m
+━━━━━━━━━━━━━━━━
+
+🕒 Candle : {candle_time}
+
+📈 Open   : {open_price}
+📈 High   : {high_price}
+📉 Low    : {low_price}
+📊 Close  : {close_price}
+
+━━━━━━━━━━━━━━━━
+
+📊 Indicators
+
+RSI      : {rsi_val}
+CCI      : {cci_val}
+CCI Diff : {diff_val}
+
+━━━━━━━━━━━━━━━━
+⚡ Strategy: CCI + EMA + SMA
 """
-
             send_alert(message)
 
             alert_count += 1
