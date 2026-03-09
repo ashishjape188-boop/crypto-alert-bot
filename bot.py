@@ -51,7 +51,7 @@ def send_alert(message):
 
 print("Crypto alert bot started...")
 
-symbol = "ETHUSD"
+product_id = 3136   # ETHUSD perpetual INR settled
 
 last_candle_time = None
 alert_count = 0
@@ -97,7 +97,7 @@ while True:
         url = "https://api.delta.exchange/v2/history/candles"
 
         params = {
-            "symbol": symbol,
+            "product_id": product_id,
             "resolution": "30m",
             "start": start,
             "end": end
@@ -160,8 +160,8 @@ while True:
         df["CCI_EMA"] = df["CCI_60"].ewm(span=7, adjust=False).mean()
 
         # ✅ EMA 7 and EMA 200
-        df["EMA7"] = df["Close"].ewm(span=7, adjust=False).mean()
-        df["EMA200"] = df["Close"].ewm(span=200, adjust=False).mean()
+        df["EMA7"] = df["close"].ewm(span=7, adjust=False).mean()
+        df["EMA200"] = df["close"].ewm(span=200, adjust=False).mean()
 
         # RSI
         df["RSI"] = calculate_rsi(df["close"])
