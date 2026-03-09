@@ -48,7 +48,7 @@ def send_alert(message):
 
 print("Crypto alert bot started...")
 
-product_id = 3136   # ETHUSD perpetual INR settled
+product_id = "ETHUSD"   # ETHUSD perpetual INR settled
 
 last_candle_time = None
 alert_count = 0
