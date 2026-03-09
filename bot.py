@@ -259,7 +259,7 @@ CCI Diff : {diff_val}
 """
             if not buy_signal and not sell_signal and allow_alert:
 
-    message = f"""
+                message = f"""
 ⚪ NO TRADE
 
 ETHUSDT | 30m
