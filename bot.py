@@ -26,11 +26,8 @@ def wait_until_next_candle():
 # TELEGRAM SETTINGS
 # ==========================
 
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_IDS = [
-    os.getenv("CHAT_ID"),
-    os.getenv("CHAT_ID_2")
-]
+TOKEN = "8640377124:AAGVvdPyS13snH_8ssFtlletAfL7wNIwbzY"
+CHAT_IDS = "5034473353"
 
 def send_alert(message):
 
