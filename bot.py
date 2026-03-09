@@ -48,7 +48,7 @@ def send_alert(message):
 
 print("Crypto alert bot started...")
 
-product_id = "ETHUSD"   # ETHUSD perpetual INR settled
+symbol = "ETHUSD"   # ETHUSD perpetual INR settled
 
 last_candle_time = None
 alert_count = 0
@@ -90,27 +90,27 @@ while True:
 
         end = int(time.time())
         start = end - 200 * 1800   # 200 candles of 30m
-
+        
         url = "https://api.delta.exchange/v2/history/candles"
-
+        
         params = {
-            "product_id": product_id,
+            "symbol": "ETHUSD",
             "resolution": "30m",
             "start": start,
             "end": end
         }
-
+        
         response = requests.get(url, params=params, timeout=10)
         data = response.json()
-
+        
         if not data.get("success"):
             raise Exception(f"Delta API error: {data}")
-
+        
         candles = data["result"]
-
+        
         if not candles:
             raise Exception("No candle data returned")
-
+        
         df = pd.DataFrame(candles)
 
         if "time" not in df.columns:
