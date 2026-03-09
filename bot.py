@@ -44,14 +44,14 @@ while True:
     # FETCH DATA FROM DELTA EXCHANGE
     # ======================================
     
-    end = int(time.time())
+    end = int(time.time()) - 60
     start = end - 10 * 24 * 3600  # 200 candles of 30m
     
     url = "https://api.delta.exchange/v2/history/candles"
     
     params = {
         "symbol": "ETHUSD",        # ETH perpetual on Delta India
-        "resolution": "30",
+        "resolution": "30m",
         "start": start,
         "end": end
     }
