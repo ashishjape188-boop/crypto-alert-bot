@@ -103,7 +103,7 @@ while True:
             "end": end
         }
 
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params, timeout=10)
         data = response.json()
 
         if not data.get("success"):
