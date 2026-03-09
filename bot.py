@@ -37,6 +37,10 @@ def send_alert(message):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
     for chat_id in CHAT_IDS:
+
+        if not chat_id:
+            continue
+
         requests.post(
             url,
             data={
@@ -44,7 +48,6 @@ def send_alert(message):
                 "text": message
             }
         )
-
 
 print("Crypto alert bot started...")
 
@@ -134,8 +137,8 @@ while True:
         df["CCI_EMA"] = df["CCI_60"].ewm(span=7, adjust=False).mean()
 
         # ✅ EMA 7 and EMA 200
-        df["EMA7"] = df2["Close"].ewm(span=7, adjust=False).mean()
-        df["EMA200"] = df2["Close"].ewm(span=200, adjust=False).mean()
+        df["EMA7"] = df["Close"].ewm(span=7, adjust=False).mean()
+        df["EMA200"] = df["Close"].ewm(span=200, adjust=False).mean()
 
         # RSI
         df["RSI"] = calculate_rsi(df["close"])
@@ -261,13 +264,13 @@ CCI Diff : {diff_val}
             last_alert_time = current_time
 
 
-    except Exception as e:
+   except Exception as e:
 
-    print("Error occurred:", str(e))
+        print("Error occurred:", str(e))
 
-    import traceback
-    traceback.print_exc()
+        import traceback
+        traceback.print_exc()
 
-    print("Retrying in 60 seconds...")
+        print("Retrying in 60 seconds...")
 
-    time.sleep(60)
+        time.sleep(60)
