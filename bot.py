@@ -3,6 +3,24 @@ import numpy as np
 import requests
 import time
 import os
+from datetime import datetime, timedelta
+
+
+def wait_until_next_candle():
+
+    now = datetime.utcnow()
+
+    # next 30-minute boundary
+    if now.minute < 30:
+        target = now.replace(minute=30, second=2, microsecond=0)
+    else:
+        target = (now + timedelta(hours=1)).replace(minute=0, second=2, microsecond=0)
+
+    sleep_seconds = (target - now).total_seconds()
+
+    print(f"Waiting {sleep_seconds:.0f} seconds for next candle...")
+
+    time.sleep(max(0, sleep_seconds))
 
 # ==========================
 # TELEGRAM SETTINGS
@@ -22,7 +40,7 @@ def send_alert(message):
         requests.post(
             url,
             data={
-                "chat_id": chat_id.strip(),
+                "chat_id": chat_id,
                 "text": message
             }
         )
@@ -30,7 +48,7 @@ def send_alert(message):
 
 print("Crypto alert bot started...")
 
-symbol = "ETHUSDT"
+symbol = "ETHUSD"
 
 last_candle_time = None
 alert_count = 0
@@ -61,6 +79,8 @@ def calculate_rsi(series, length=14):
 
 
 while True:
+
+    wait_until_next_candle()
 
     try:
 
@@ -97,31 +117,37 @@ while True:
         # INDICATORS
         # ==========================
 
+        # Typical Price
         df["hlc3"] = (df["high"] + df["low"] + df["close"]) / 3
-
         df["ma"] = df["hlc3"].rolling(window=60).mean()
 
+        # Mean Deviation
         df["mean_dev"] = df["hlc3"].rolling(window=60).apply(
             lambda x: np.mean(np.abs(x - np.mean(x))),
             raw=True
         )
 
+        # CCI Formula
         df["CCI_60"] = (df["hlc3"] - df["ma"]) / (0.015 * df["mean_dev"])
 
+        # ✅ CCI EMA 7 (Smoothing)
         df["CCI_EMA"] = df["CCI_60"].ewm(span=7, adjust=False).mean()
 
-        df["SMA7"] = df["close"].rolling(window=7).mean()
-        df["EMA7"] = df["close"].ewm(span=7, adjust=False).mean()
+        # ✅ EMA 7 and EMA 200
+        df["EMA7"] = df2["Close"].ewm(span=7, adjust=False).mean()
+        df["EMA200"] = df2["Close"].ewm(span=200, adjust=False).mean()
 
+        # RSI
         df["RSI"] = calculate_rsi(df["close"])
 
+        # Difference
         df["Diff_CCI"] = df["CCI_60"] - df["CCI_EMA"]
 
         # ==========================
         # LAST CANDLE DATA
         # ==========================
 
-        last = df.iloc[-1]
+        last = df.iloc[-2]
 
         candle_time = (last["Open_time"] + pd.Timedelta(hours=5, minutes=30)).strftime("%d-%b %H:%M IST")
 
@@ -134,13 +160,13 @@ while True:
         cci_val = round(last["CCI_60"], 2)
         diff_val = round(last["Diff_CCI"], 2)
 
-        price = last["close"]
+        price = close_price
 
         # ==========================
         # SIGNAL LOGIC
         # ==========================
 
-        candle_time_check = last["Open_time"]
+        candle_time_check = df.iloc[-2]["Open_time"]
 
         if candle_time_check != last_candle_time:
             last_candle_time = candle_time_check
@@ -149,21 +175,19 @@ while True:
         buy_signal = (
             last["CCI_60"] > last["CCI_EMA"]
             and abs(last["Diff_CCI"]) > 4
-            and price > last["SMA7"]
-            and price > last["EMA7"]
+            and (price > last["EMA200"] or price > last["EMA7"])
         )
 
         sell_signal = (
             last["CCI_60"] < last["CCI_EMA"]
             and abs(last["Diff_CCI"]) > 4
-            and price < last["SMA7"]
-            and price < last["EMA7"]
+            and (price < last["EMA200"] or price < last["EMA7"])
         )
 
         current_time = time.time()
 
         allow_alert = (
-            alert_count < 2
+            alert_count < 1
             and current_time - last_alert_time >= 900
         )
 
@@ -237,15 +261,13 @@ CCI Diff : {diff_val}
             last_alert_time = current_time
 
 
-        # ==========================
-        # WAIT
-        # ==========================
-
-        time.sleep(120)
-
-
     except Exception as e:
 
-        print("Error:", e)
+    print("Error occurred:", str(e))
 
-        time.sleep(60)
+    import traceback
+    traceback.print_exc()
+
+    print("Retrying in 60 seconds...")
+
+    time.sleep(60)
