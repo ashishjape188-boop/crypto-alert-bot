@@ -257,12 +257,37 @@ CCI Diff : {diff_val}
 ━━━━━━━━━━━━━━━━
 ⚡ Strategy: CCI + EMA + SMA
 """
+            if not buy_signal and not sell_signal and allow_alert:
 
-            send_alert(message)
+    message = f"""
+⚪ NO TRADE
 
-            alert_count += 1
-            last_alert_time = current_time
+ETHUSDT | 30m
+━━━━━━━━━━━━━━━━
 
+🕒 Candle : {candle_time}
+
+📈 Open   : {open_price}
+📈 High   : {high_price}
+📉 Low    : {low_price}
+📊 Close  : {close_price}
+
+━━━━━━━━━━━━━━━━
+
+📊 Indicators
+
+RSI      : {rsi_val}
+CCI      : {cci_val}
+CCI Diff : {diff_val}
+
+━━━━━━━━━━━━━━━━
+⚡ Strategy: CCI + EMA
+"""
+
+        send_alert(message)
+    
+        alert_count += 1
+        last_alert_time = current_time
 
 
     except Exception as e:
