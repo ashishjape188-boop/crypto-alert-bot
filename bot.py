@@ -264,7 +264,8 @@ CCI Diff : {diff_val}
             last_alert_time = current_time
 
 
-   except Exception as e:
+
+    except Exception as e:
 
         print("Error occurred:", str(e))
 
