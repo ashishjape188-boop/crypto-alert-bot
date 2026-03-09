@@ -3,12 +3,12 @@ import numpy as np
 import requests
 import time
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta,UTC
 
 
 def wait_until_next_candle():
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     # next 30-minute boundary
     if now.minute < 30:
