@@ -8,8 +8,8 @@ import numpy as np
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 chat_ids = [
-    "1070509960",
-    "1937479700",
+    #"1070509960",
+    #"1937479700",
     "5034473353",
 ]
 
@@ -45,19 +45,21 @@ while True:
     # ======================================
     
     end = int(time.time())
-    start = end - 200 * 1800  # 200 candles of 30m
+    start = end - 10 * 24 * 3600  # 200 candles of 30m
     
     url = "https://api.delta.exchange/v2/history/candles"
     
     params = {
         "symbol": "ETHUSD",        # ETH perpetual on Delta India
-        "resolution": "30m",
+        "resolution": "30",
         "start": start,
         "end": end
     }
     
     response = requests.get(url, params=params)
     data = response.json()
+    
+    print("API response:", data)
     
     if not data.get("success"):
         raise Exception(f"Delta API error: {data}")
