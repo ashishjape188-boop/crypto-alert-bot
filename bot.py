@@ -125,6 +125,20 @@ while True:
 
         df = df.sort_values("Open_time")
 
+        # Use the last CLOSED candle
+        last_closed = df.iloc[-2]
+        
+        candle_time_check = last_closed["Open_time"]
+        
+        # Skip if we already processed this candle
+        if candle_time_check == last_candle_time:
+            print("Candle already processed, waiting for next...")
+            continue
+        
+        # Mark this candle as processed
+        last_candle_time = candle_time_check
+        alert_count = 0
+
         # ==========================
         # INDICATORS
         # ==========================
@@ -159,7 +173,7 @@ while True:
         # LAST CANDLE DATA
         # ==========================
 
-        last = df.iloc[-2]
+        last = last_closed
 
         candle_time = (last["Open_time"] + pd.Timedelta(hours=5, minutes=30)).strftime("%d-%b %H:%M IST")
 
