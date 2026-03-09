@@ -106,9 +106,18 @@ while True:
         response = requests.get(url, params=params)
         data = response.json()
 
+        if not data.get("success"):
+            raise Exception(f"Delta API error: {data}")
+
         candles = data["result"]
 
+        if not candles:
+            raise Exception("No candle data returned")
+
         df = pd.DataFrame(candles)
+
+        if "time" not in df.columns:
+            raise Exception(f"Unexpected API response: {df.head()}")
 
         df = df.rename(columns={"time": "Open_time"})
 
