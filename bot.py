@@ -20,7 +20,7 @@
 
 
 # Run once to install required packages
-get_ipython().system('pip install apscheduler pytz requests pandas numpy --quiet')
+#get_ipython().system('pip install apscheduler pytz requests pandas numpy --quiet')
 
 
 # ## 2. Configuration & Environment Setup
