@@ -1,6 +1,4 @@
 pandas
 numpy
 requests
-openpyxl
 pytz
-apscheduler
