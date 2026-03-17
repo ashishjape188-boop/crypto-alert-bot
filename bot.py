@@ -172,7 +172,7 @@ def compute_signals(df):
     df["Signal"] = np.where(long_cond, "Long Entry", np.where(short_cond, "Short Entry", "No Trade"))
 
     return df
-
+    
 def compute_new_signal(df):
     signals = df["Signal"].copy()
     
@@ -196,20 +196,19 @@ def compute_new_signal(df):
             signals.iloc[i] = curr  # carry forward previous
     
     df["Signal"] = signals
-    df["Signal2"] = np.where(
-        (df["Signal"].shift(1) == "No Trade") &
-        (df["Signal"].shift(2) == "No Trade") &
-        (df["Signal"].shift(3) == "No Trade") &
-        (df["Signal"] == "Short Entry"),
+        # Condition for each row
+    cond = (df["CCI_60"] < df["CCI_EMA"]) & (df["Close"] > df["EMA7"])
+    
+    # Check if this condition was true for previous 3 candles
+    df["prev3_cond"] = cond.shift(1).rolling(3).sum() == 3
+    
+    # Final Signal2
+    df["Signal2"] = np.where((
+        (df["prev3_cond"]) & (df["Signal"] == "Short Entry")),
         "Short_Fake_Entry",
-        np.where(
-        (df["Signal"].shift(1) == "No Trade") &
-        (df["Signal"].shift(2) == "No Trade") &
-        (df["Signal"].shift(3) == "No Trade") &
-        (df["Signal"] == "Long Entry"),
-            "Long_Fake_Entry",
-            df["Signal"])
-    )
+        np.where(((df["prev3_cond"]) & (df["Signal"] == "Short Entry")),
+        "Long_Fake_Entry",
+        df["Signal"]))
     return df
 # Quick test (offline — uses random data)
 # df = compute_signals(df)
