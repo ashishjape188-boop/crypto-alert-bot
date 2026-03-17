@@ -173,6 +173,44 @@ def compute_signals(df):
 
     return df
 
+def compute_new_signal(df):
+    signals = df["Signal"].copy()
+    
+    for i in range(1, len(df)):
+        prev = signals.iloc[i-1]
+        curr = signals.iloc[i]
+    
+        if curr == "Long Entry" and \
+           (df["CCI_60"].iloc[i-1] < df["CCI_EMA"].iloc[i-1]) and \
+           (df["Close"].iloc[i-1] < df["EMA7"].iloc[i-1]):
+    
+            signals.iloc[i] = "Long Entry"
+    
+        elif curr == "Short Entry" and \
+             (df["CCI_60"].iloc[i-1] > df["CCI_EMA"].iloc[i-1]) and \
+             (df["Close"].iloc[i-1] > df["EMA7"].iloc[i-1]):
+    
+            signals.iloc[i] = "Short Entry"
+    
+        else:
+            signals.iloc[i] = curr  # carry forward previous
+    
+    df["Signal"] = signals
+    df["Signal2"] = np.where(
+        (df["Signal"].shift(1) == "No Trade") &
+        (df["Signal"].shift(2) == "No Trade") &
+        (df["Signal"].shift(3) == "No Trade") &
+        (df["Signal"] == "Short Entry"),
+        "Short_Fake_Entry",
+        np.where(
+        (df["Signal"].shift(1) == "No Trade") &
+        (df["Signal"].shift(2) == "No Trade") &
+        (df["Signal"].shift(3) == "No Trade") &
+        (df["Signal"] == "Long Entry"),
+            "Long_Fake_Entry",
+            df["Signal"])
+    )
+    return df
 # Quick test (offline — uses random data)
 # df = compute_signals(df)
 # df[["Open_time","Close","CCI_60","EMA7","RSI","Signal"]].tail(5)
@@ -195,11 +233,12 @@ def run_signal_check():
         return
 
     df    = compute_signals(df)
+    df = compute_new_signal(df)
     row   = df.iloc[-1]
 
     open_time = row["Open_time"].strftime("%Y-%m-%d %H:%M")
     close     = row["Close"]
-    signal    = row["Signal"]
+    signal    = row["Signal2"]
     rsi       = round(row["RSI"], 2)
 
     print(f"[INFO] Signal: {signal} | Close: {close} | RSI: {rsi}")
@@ -273,4 +312,3 @@ if os.path.exists("signals.csv"):
     display(log_df.tail(10))
 else:
     print("No signals logged yet. Run the bot to generate signals.")
-
