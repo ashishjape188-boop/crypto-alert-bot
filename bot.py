@@ -197,18 +197,25 @@ def compute_new_signal(df):
     
     df["Signal"] = signals
         # Condition for each row
-    cond = (df["CCI_60"] < df["CCI_EMA"]) & (df["Close"] > df["EMA7"])
+    short_cond = (df["CCI_60"] < df["CCI_EMA"]) & (df["Close"] > df["EMA7"])
     
     # Check if this condition was true for previous 3 candles
-    df["prev3_cond"] = cond.shift(1).rolling(3).sum() == 3
+    df["prev3_short_cond"] = short_cond.shift(1).rolling(3).sum() == 3
+
+    long_cond = (df["CCI_60"] > df["CCI_EMA"]) & (df["Close"] < df["EMA7"])
+    
+    # Check if this condition was true for previous 3 candles
+    df["prev3_long_cond"] = long_cond.shift(1).rolling(3).sum() == 3
     
     # Final Signal2
     df["Signal2"] = np.where((
-        (df["prev3_cond"]) & (df["Signal"] == "Short Entry")),
+        (df["prev3_short_cond"]) & (df["Signal"] == "Short Entry")),
         "Short_Fake_Entry",
-        np.where(((df["prev3_cond"]) & (df["Signal"] == "Short Entry")),
+        np.where(((df["prev3_long_cond"]) & (df["Signal"] == "Long Entry")),
         "Long_Fake_Entry",
         df["Signal"]))
+    
+   
     return df
 # Quick test (offline — uses random data)
 # df = compute_signals(df)
