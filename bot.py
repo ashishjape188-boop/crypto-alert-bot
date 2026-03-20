@@ -148,33 +148,34 @@ def fetch_candles(symbol=SYMBOL, resolution="30m", lookback_candles=200):
 # ## 6. Compute Indicators & Generate Signal
 
 # In[6]:
-
-
-def compute_signals(df):
-    """Compute CCI(60), EMA7, RSI(14) and derive trading signals."""
-    # CCI (60)
-    df["hlc3"]     = (df["High"] + df["Low"] + df["Close"]) / 3
-    df["ma"]       = df["hlc3"].rolling(60).mean()
-    df["mean_dev"] = df["hlc3"].rolling(60).apply(
-        lambda x: np.mean(np.abs(x - np.mean(x))), raw=True
-    )
-    df["CCI_60"]   = (df["hlc3"] - df["ma"]) / (0.015 * df["mean_dev"])
-    df["CCI_EMA"]  = df["CCI_60"].ewm(span=7, adjust=False).mean()
-    df["Diff_CCI"] = df["CCI_60"] - df["CCI_EMA"]
-
-    # EMA 7 and RSI 14
-    df["EMA7"] = df["Close"].ewm(span=7, adjust=False).mean()
-    df["RSI"]  = calculate_rsi(df["Close"])
-
-    # Signal conditions
-    long_cond  = (df["CCI_60"] > df["CCI_EMA"]) & (abs(df["Diff_CCI"]) > 4) & (df["Close"] > df["EMA7"])
-    short_cond = (df["CCI_60"] < df["CCI_EMA"]) & (abs(df["Diff_CCI"]) > 4) & (df["Close"] < df["EMA7"])
-    df["Signal"] = np.where(long_cond, "Long Entry", np.where(short_cond, "Short Entry", "No Trade"))
-
-    return df
     
 def compute_new_signal(df):
     df = df.copy()
+    
+    # =========================
+    # 📊 INDICATORS
+    # =========================
+    df["hlc3"] = (df["High"] + df["Low"] + df["Close"]) / 3
+
+    df["ma"] = df["hlc3"].rolling(60).mean()
+
+    df["mean_dev"] = df["hlc3"].rolling(60).apply(
+        lambda x: np.mean(np.abs(x - np.mean(x))), raw=True
+    )
+
+    df["CCI_60"] = (df["hlc3"] - df["ma"]) / (0.015 * df["mean_dev"])
+
+    df["CCI_EMA"] = df["CCI_60"].ewm(span=7, adjust=False).mean()
+
+    df["Diff_CCI"] = df["CCI_60"] - df["CCI_EMA"]
+
+    df["EMA7"] = df["Close"].ewm(span=7, adjust=False).mean()
+
+    df["RSI"] = calculate_rsi(df["Close"])
+
+    # =========================
+    # 🎯 FINAL SIGNAL LOGIC
+    # =========================
 
     signals = []
     current_position = None  # 🔥 Tracks ongoing state
@@ -339,7 +340,6 @@ def run_signal_check():
     # =========================
     # ⚙️ Compute Indicators + Signals
     # =========================
-    df = compute_signals(df)
     df = compute_new_signal(df)
 
     # =========================
