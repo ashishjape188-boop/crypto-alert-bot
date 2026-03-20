@@ -44,10 +44,10 @@ import pytz
 BOT_TOKEN = "8749089704:AAFq_Xh6_oYk61V4mv8eNVdcX3Yh27AJuuY"
 
 CHAT_IDS = [
-    "1070509960",
-    "1937479700",
+    #"1070509960",
+    #"1937479700",
     "5034473353",
-    "2037873693"
+    #"2037873693"
 ]
 
 
@@ -149,14 +149,13 @@ def fetch_candles(symbol=SYMBOL, resolution="30m", lookback_candles=200):
 
 # In[6]:
     
-def compute_new_signal(df):
+def compute_new4_signal(df):
     df = df.copy()
-    
+
     # =========================
     # 📊 INDICATORS
     # =========================
     df["hlc3"] = (df["High"] + df["Low"] + df["Close"]) / 3
-
     df["ma"] = df["hlc3"].rolling(60).mean()
 
     df["mean_dev"] = df["hlc3"].rolling(60).apply(
@@ -164,104 +163,62 @@ def compute_new_signal(df):
     )
 
     df["CCI_60"] = (df["hlc3"] - df["ma"]) / (0.015 * df["mean_dev"])
-
     df["CCI_EMA"] = df["CCI_60"].ewm(span=7, adjust=False).mean()
 
-    df["Diff_CCI"] = df["CCI_60"] - df["CCI_EMA"]
-
     df["EMA7"] = df["Close"].ewm(span=7, adjust=False).mean()
-
     df["RSI"] = calculate_rsi(df["Close"])
 
     # =========================
-    # 🎯 FINAL SIGNAL LOGIC
+    # 🎯 SIGNAL LOGIC (FIXED)
     # =========================
-
     signals = []
-    current_position = None  # 🔥 Tracks ongoing state
 
     for i in range(len(df)):
         if i == 0:
             signals.append("No Trade")
             continue
 
-        # Current values
         close = df["Close"].iloc[i]
         ema = df["EMA7"].iloc[i]
         cci = df["CCI_60"].iloc[i]
         cci_ema = df["CCI_EMA"].iloc[i]
 
-        # Previous values
         prev_close = df["Close"].iloc[i-1]
         prev_ema = df["EMA7"].iloc[i-1]
         prev_cci = df["CCI_60"].iloc[i-1]
         prev_cci_ema = df["CCI_EMA"].iloc[i-1]
 
-        # =========================
-        # 🔄 CONTINUATION LOGIC FIRST
-        # =========================
+        prev_signal = signals[i-1]   # 🔥 KEY FIX
 
-        # Continue LONG
-        if current_position == "Long Trade":
+        # =========================
+        # 🔄 CONTINUATION
+        # =========================
+        if prev_signal == "Long Trade":
             if close > ema and cci > cci_ema:
                 signals.append("Long Trade")
                 continue
-            else:
-                current_position = None  # exit
 
-        # Continue SHORT
-        elif current_position == "Short Trade":
+        elif prev_signal == "Short Trade":
             if close < ema and cci < cci_ema:
                 signals.append("Short Trade")
                 continue
-            else:
-                current_position = None  # exit
 
         # =========================
-        # 🟢 LONG TRADE (NEW ENTRY)
+        # 🟢 LONG ENTRY
         # =========================
         if (prev_close < prev_ema and prev_cci < prev_cci_ema) and \
            (close > ema and cci > cci_ema):
 
             signals.append("Long Trade")
-            current_position = "Long Trade"
 
         # =========================
-        # 🔴 SHORT TRADE (NEW ENTRY)
+        # 🔴 SHORT ENTRY
         # =========================
         elif (prev_close > prev_ema and prev_cci > prev_cci_ema) and \
              (close < ema and cci < cci_ema):
 
             signals.append("Short Trade")
-            current_position = "Short Trade"
 
-        # =========================
-        # 🟢 LONG FAKE TRADE
-        # =========================
-        elif (close > ema and cci > cci_ema):
-            if i >= 3 and all(
-                df["CCI_60"].iloc[j] > df["CCI_EMA"].iloc[j]
-                for j in range(i-3, i)
-            ):
-                signals.append("Long Fake Trade")
-            else:
-                signals.append("No Trade")
-
-        # =========================
-        # 🔴 SHORT FAKE TRADE
-        # =========================
-        elif (close < ema and cci < cci_ema):
-            if i >= 3 and all(
-                df["CCI_60"].iloc[j] < df["CCI_EMA"].iloc[j]
-                for j in range(i-3, i)
-            ):
-                signals.append("Short Fake Trade")
-            else:
-                signals.append("No Trade")
-
-        # =========================
-        # ❌ NO TRADE
-        # =========================
         else:
             signals.append("No Trade")
 
