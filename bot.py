@@ -294,7 +294,7 @@ def run_signal_check():
 
     open_time = row["Open_time"].strftime("%Y-%m-%d %H:%M")
     close     = row["Close"]
-    signal    = row["Signal2"]
+    signal    = row["Final_Signal"]
     rsi       = round(row["RSI"], 2)
 
     print(f"[INFO] Signal: {signal} | Close: {close} | RSI: {rsi}")
