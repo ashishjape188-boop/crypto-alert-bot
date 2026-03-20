@@ -149,7 +149,7 @@ def fetch_candles(symbol=SYMBOL, resolution="30m", lookback_candles=200):
 
 # In[6]:
     
-def compute_new4_signal(df):
+def compute_new_signal(df):
     df = df.copy()
 
     # =========================
