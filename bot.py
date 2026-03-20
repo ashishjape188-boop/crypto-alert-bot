@@ -275,67 +275,94 @@ def compute_new_signal(df):
 # ## 7. Main Signal-Check Job
 
 # In[7]:
-
-
-def run_signal_check():
-    """Fetch data, compute signals, and send Telegram alert on signal change."""
-    global last_signal
-    print(f"[INFO] Job triggered at: {datetime.now(IST)}")
-
-    try:
-        df = fetch_candles()
-    except Exception as e:
-        print(f"[ERROR] API fetch failed: {e}")
-        return
-
-    df = compute_signals(df)
-    df = compute_new_signal(df)
+def get_telegram_signal(df, symbol):
+    """
+    Extract latest signal and format Telegram message.
+    Returns: (signal, message)
+    """
 
     row = df.iloc[-1]
 
     open_time = row["Open_time"].strftime("%Y-%m-%d %H:%M")
     close     = row["Close"]
     signal    = row["Final_Signal"]
-    rsi       = round(row["RSI"], 2)
+    rsi       = round(row["RSI"], 2) if "RSI" in df.columns else "N/A"
+
+    # =========================
+    # 🎨 Emoji + Label
+    # =========================
+    if signal == "Long Trade":
+        emoji = "🟢"
+        label = "LONG TRADE"
+    elif signal == "Short Trade":
+        emoji = "🔴"
+        label = "SHORT TRADE"
+    elif signal == "Long Fake Trade":
+        emoji = "🟡"
+        label = "LONG FAKE ⚠️"
+    elif signal == "Short Fake Trade":
+        emoji = "🟠"
+        label = "SHORT FAKE ⚠️"
+    else:
+        emoji = "⚪"
+        label = "NO TRADE"
+
+    # =========================
+    # 📝 Message Format
+    # =========================
+    message = (
+        f"{emoji} *{symbol} Signal Alert*\n"
+        f"🕐 Time  : {open_time} IST\n"
+        f"💰 Close : {close}\n"
+        f"📊 Signal: {label}\n"
+        f"📈 RSI   : {rsi}"
+    )
+
+    return signal, message
+
+
+def run_signal_check():
+    """Fetch data, compute signals, and send Telegram alert on signal change."""
+    global last_signal
+
+    print(f"[INFO] Job triggered at: {datetime.now(IST)}")
+
+    # =========================
+    # 📥 Fetch Data
+    # =========================
+    try:
+        df = fetch_candles()
+    except Exception as e:
+        print(f"[ERROR] API fetch failed: {e}")
+        return
+
+    # =========================
+    # ⚙️ Compute Indicators + Signals
+    # =========================
+    df = compute_signals(df)
+    df = compute_new3_signal(df)
+
+    # =========================
+    # 📡 Get Telegram Message
+    # =========================
+    signal, msg = get_telegram_signal(df, SYMBOL)
+
+    row = df.iloc[-1]
+    open_time = row["Open_time"].strftime("%Y-%m-%d %H:%M")
+    close     = row["Close"]
+    rsi       = round(row["RSI"], 2) if "RSI" in df.columns else "N/A"
 
     print(f"[INFO] Signal: {signal} | Close: {close} | RSI: {rsi}")
 
     # =========================
-    # 🔥 UPDATED EMOJI LOGIC
-    # =========================
-    if signal == "Long Trade":
-        emoji = "🟢"
-        signal_text = "LONG TRADE"
-    elif signal == "Short Trade":
-        emoji = "🔴"
-        signal_text = "SHORT TRADE"
-    elif signal == "Long Fake Trade":
-        emoji = "🟡"
-        signal_text = "LONG FAKE ⚠️"
-    elif signal == "Short Fake Trade":
-        emoji = "🟠"
-        signal_text = "SHORT FAKE ⚠️"
-    else:
-        emoji = "⚪"
-        signal_text = "NO TRADE"
-
-    # =========================
-    # 🔔 SEND ALERT ONLY IF SIGNAL CHANGED
+    # 🔔 Send Alert Only on Change
     # =========================
     if signal != last_signal:
-
-        msg = (
-            f"{emoji} *{SYMBOL} Signal Alert*\n"
-            f"🕐 Time  : {open_time} IST\n"
-            f"💰 Close : {close}\n"
-            f"📊 Signal: {signal_text}\n"
-            f"📈 RSI   : {rsi}"
-        )
 
         send_message(msg)
 
         # =========================
-        # 💾 SAVE TO CSV
+        # 💾 Save to CSV (only selected columns)
         # =========================
         log = pd.DataFrame([{
             "Open_time": open_time,
@@ -351,13 +378,13 @@ def run_signal_check():
             index=False
         )
 
-        print(f"[LOG] Signal saved to signals.csv")
+        print("[LOG] Signal saved to signals.csv")
 
+        # Update last signal
         last_signal = signal
 
     else:
         print(f"[INFO] Signal unchanged ({signal}), no alert sent.")
-
 # ## 8. Run Once (Manual Test)
 # > Use this cell to test the bot without the scheduler.
 
