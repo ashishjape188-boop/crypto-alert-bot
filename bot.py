@@ -100,12 +100,13 @@ def calculate_rsi(series, length=14):
     return 100 - (100 / (1 + rs))
 
 
+
 # ## 5. Fetch Candle Data from Delta Exchange
 
 # In[5]:
 
 
-def fetch_candles(symbol=SYMBOL, resolution="30m", lookback_candles=200):
+def fetch_candles(symbol=SYMBOL, resolution="5m", lookback_candles=200):
     """Fetch OHLCV candles from Delta Exchange API."""
     end   = int(time.time())
     start = end - lookback_candles * 1800
@@ -164,79 +165,62 @@ def compute_new_signal(df):
     )
 
     df["CCI_60"] = (df["hlc3"] - df["ma"]) / (0.015 * df["mean_dev"])
-
     df["CCI_EMA"] = df["CCI_60"].ewm(span=7, adjust=False).mean()
 
-    df["Diff_CCI"] = df["CCI_60"] - df["CCI_EMA"]
-
     df["EMA7"] = df["Close"].ewm(span=7, adjust=False).mean()
-
     df["RSI"] = calculate_rsi(df["Close"])
 
     # =========================
-    # 🎯 FINAL SIGNAL LOGIC
+    # 🎯 SIGNAL LOGIC (FIXED)
     # =========================
 
-    signals = []
-    current_position = None  # 🔥 Tracks ongoing state
+    signals = ["No Trade"]  # first row
 
-    for i in range(len(df)):
-        if i == 0:
-            signals.append("No Trade")
-            continue
+    for i in range(1, len(df)):
 
-        # Current values
         close = df["Close"].iloc[i]
         ema = df["EMA7"].iloc[i]
         cci = df["CCI_60"].iloc[i]
         cci_ema = df["CCI_EMA"].iloc[i]
 
-        # Previous values
         prev_close = df["Close"].iloc[i-1]
         prev_ema = df["EMA7"].iloc[i-1]
         prev_cci = df["CCI_60"].iloc[i-1]
         prev_cci_ema = df["CCI_EMA"].iloc[i-1]
 
-        # =========================
-        # 🔄 CONTINUATION LOGIC FIRST
-        # =========================
+        prev_signal = signals[i-1]
 
-        # Continue LONG
-        if current_position == "Long Trade":
+        # =========================
+        # 🔄 CONTINUATION (DATA-DRIVEN)
+        # =========================
+        if prev_signal == "Long Trade":
             if close > ema and cci > cci_ema:
                 signals.append("Long Trade")
                 continue
-            else:
-                current_position = None  # exit
 
-        # Continue SHORT
-        elif current_position == "Short Trade":
+        elif prev_signal == "Short Trade":
             if close < ema and cci < cci_ema:
                 signals.append("Short Trade")
                 continue
-            else:
-                current_position = None  # exit
 
         # =========================
-        # 🟢 LONG TRADE (NEW ENTRY)
+        # 🟢 LONG ENTRY
         # =========================
         if (prev_close < prev_ema and prev_cci < prev_cci_ema) and \
            (close > ema and cci > cci_ema):
 
             signals.append("Long Trade")
-            current_position = "Long Trade"
 
         # =========================
-        # 🔴 SHORT TRADE (NEW ENTRY)
+        # 🔴 SHORT ENTRY
         # =========================
         elif (prev_close > prev_ema and prev_cci > prev_cci_ema) and \
              (close < ema and cci < cci_ema):
 
             signals.append("Short Trade")
-            current_position = "Short Trade"
 
         # =========================
-        # 🟢 LONG FAKE TRADE
+        # 🟡 LONG FAKE
         # =========================
         elif (close > ema and cci > cci_ema):
             if i >= 3 and all(
@@ -248,7 +232,7 @@ def compute_new_signal(df):
                 signals.append("No Trade")
 
         # =========================
-        # 🔴 SHORT FAKE TRADE
+        # 🟠 SHORT FAKE
         # =========================
         elif (close < ema and cci < cci_ema):
             if i >= 3 and all(
@@ -259,15 +243,11 @@ def compute_new_signal(df):
             else:
                 signals.append("No Trade")
 
-        # =========================
-        # ❌ NO TRADE
-        # =========================
         else:
             signals.append("No Trade")
 
     df["Final_Signal"] = signals
-
-    return df    
+    return df
 # Quick test (offline — uses random data)
 # df = compute_signals(df)
 # df[["Open_time","Close","CCI_60","EMA7","RSI","Signal"]].tail(5)
@@ -408,7 +388,7 @@ scheduler = BlockingScheduler(timezone=IST)
 
 scheduler.add_job(
     run_signal_check,
-    trigger=CronTrigger(minute="0,3", second="5", timezone=IST),
+    trigger=CronTrigger(minute="*/5", second="5", timezone=IST),
     misfire_grace_time=60,
     max_instances=1
 )
