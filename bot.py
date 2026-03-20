@@ -340,7 +340,7 @@ def run_signal_check():
     # ⚙️ Compute Indicators + Signals
     # =========================
     df = compute_signals(df)
-    df = compute_new3_signal(df)
+    df = compute_new_signal(df)
 
     # =========================
     # 📡 Get Telegram Message
