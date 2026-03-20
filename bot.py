@@ -288,9 +288,10 @@ def run_signal_check():
         print(f"[ERROR] API fetch failed: {e}")
         return
 
-    df    = compute_signals(df)
+    df = compute_signals(df)
     df = compute_new_signal(df)
-    row   = df.iloc[-1]
+
+    row = df.iloc[-1]
 
     open_time = row["Open_time"].strftime("%Y-%m-%d %H:%M")
     close     = row["Close"]
@@ -299,25 +300,63 @@ def run_signal_check():
 
     print(f"[INFO] Signal: {signal} | Close: {close} | RSI: {rsi}")
 
+    # =========================
+    # 🔥 UPDATED EMOJI LOGIC
+    # =========================
+    if signal == "Long Trade":
+        emoji = "🟢"
+        signal_text = "LONG TRADE"
+    elif signal == "Short Trade":
+        emoji = "🔴"
+        signal_text = "SHORT TRADE"
+    elif signal == "Long Fake Trade":
+        emoji = "🟡"
+        signal_text = "LONG FAKE ⚠️"
+    elif signal == "Short Fake Trade":
+        emoji = "🟠"
+        signal_text = "SHORT FAKE ⚠️"
+    else:
+        emoji = "⚪"
+        signal_text = "NO TRADE"
+
+    # =========================
+    # 🔔 SEND ALERT ONLY IF SIGNAL CHANGED
+    # =========================
     if signal != last_signal:
-        emoji = "🟢" if signal == "Long Entry" else "🔴" if signal == "Short Entry" else "⚪"
+
         msg = (
             f"{emoji} *{SYMBOL} Signal Alert*\n"
             f"🕐 Time  : {open_time} IST\n"
             f"💰 Close : {close}\n"
-            f"📊 Signal: {signal}\n"
+            f"📊 Signal: {signal_text}\n"
             f"📈 RSI   : {rsi}"
         )
+
         send_message(msg)
 
-        log = pd.DataFrame([{"Open_time": open_time, "Close": close, "Signal": signal, "RSI": rsi}])
-        log.to_csv("signals.csv", mode='a', header=not os.path.exists("signals.csv"), index=False)
+        # =========================
+        # 💾 SAVE TO CSV
+        # =========================
+        log = pd.DataFrame([{
+            "Open_time": open_time,
+            "Close": close,
+            "Signal": signal,
+            "RSI": rsi
+        }])
+
+        log.to_csv(
+            "signals.csv",
+            mode='a',
+            header=not os.path.exists("signals.csv"),
+            index=False
+        )
+
         print(f"[LOG] Signal saved to signals.csv")
 
         last_signal = signal
+
     else:
         print(f"[INFO] Signal unchanged ({signal}), no alert sent.")
-
 
 # ## 8. Run Once (Manual Test)
 # > Use this cell to test the bot without the scheduler.
