@@ -262,7 +262,7 @@ def get_telegram_signal(df, symbol):
     Returns: (signal, message)
     """
 
-    row = df.iloc[-1]
+    row = df.iloc[-2]
 
     open_time = row["Open_time"].strftime("%Y-%m-%d %H:%M")
     close     = row["Close"]
@@ -327,7 +327,7 @@ def run_signal_check():
     # =========================
     signal, msg = get_telegram_signal(df, SYMBOL)
 
-    row = df.iloc[-1]
+    row = df.iloc[-2]
     open_time = row["Open_time"].strftime("%Y-%m-%d %H:%M")
     close     = row["Close"]
     rsi       = round(row["RSI"], 2) if "RSI" in df.columns else "N/A"
