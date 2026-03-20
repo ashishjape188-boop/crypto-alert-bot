@@ -174,50 +174,100 @@ def compute_signals(df):
     return df
     
 def compute_new_signal(df):
-    signals = df["Signal"].copy()
-    
-    for i in range(1, len(df)):
-        prev = signals.iloc[i-1]
-        curr = signals.iloc[i]
-    
-        if curr == "Long Entry" and \
-           (df["CCI_60"].iloc[i-1] < df["CCI_EMA"].iloc[i-1]) and \
-           (df["Close"].iloc[i-1] < df["EMA7"].iloc[i-1]):
-    
-            signals.iloc[i] = "Long Entry"
-    
-        elif curr == "Short Entry" and \
-             (df["CCI_60"].iloc[i-1] > df["CCI_EMA"].iloc[i-1]) and \
-             (df["Close"].iloc[i-1] > df["EMA7"].iloc[i-1]):
-    
-            signals.iloc[i] = "Short Entry"
-    
-        else:
-            signals.iloc[i] = curr  # carry forward previous
-    
-    df["Signal"] = signals
-        # Condition for each row
-    short_cond = (df["CCI_60"] < df["CCI_EMA"]) & (df["Close"] > df["EMA7"])
-    
-    # Check if this condition was true for previous 3 candles
-    df["prev3_short_cond"] = short_cond.shift(1).rolling(3).sum() == 3
+    df = df.copy()
 
-    long_cond = (df["CCI_60"] > df["CCI_EMA"]) & (df["Close"] < df["EMA7"])
-    
-    # Check if this condition was true for previous 3 candles
-    df["prev3_long_cond"] = long_cond.shift(1).rolling(3).sum() == 3
-    
-    # Final Signal2
-    df["Signal2"] = np.where((
-        (df["prev3_short_cond"]) & (df["Signal"] == "Short Entry")),
-        "Short_Fake_Entry",
-        np.where(((df["prev3_long_cond"]) & (df["Signal"] == "Long Entry")),
-        "Long_Fake_Entry",
-        df["Signal"]))
-    
-   
+    signals = []
+    current_position = None  # 🔥 Tracks ongoing state
+
+    for i in range(len(df)):
+        if i == 0:
+            signals.append("No Trade")
+            continue
+
+        # Current values
+        close = df["Close"].iloc[i]
+        ema = df["EMA7"].iloc[i]
+        cci = df["CCI_60"].iloc[i]
+        cci_ema = df["CCI_EMA"].iloc[i]
+
+        # Previous values
+        prev_close = df["Close"].iloc[i-1]
+        prev_ema = df["EMA7"].iloc[i-1]
+        prev_cci = df["CCI_60"].iloc[i-1]
+        prev_cci_ema = df["CCI_EMA"].iloc[i-1]
+
+        # =========================
+        # 🔄 CONTINUATION LOGIC FIRST
+        # =========================
+
+        # Continue LONG
+        if current_position == "Long Trade":
+            if close > ema and cci > cci_ema:
+                signals.append("Long Trade")
+                continue
+            else:
+                current_position = None  # exit
+
+        # Continue SHORT
+        elif current_position == "Short Trade":
+            if close < ema and cci < cci_ema:
+                signals.append("Short Trade")
+                continue
+            else:
+                current_position = None  # exit
+
+        # =========================
+        # 🟢 LONG TRADE (NEW ENTRY)
+        # =========================
+        if (prev_close < prev_ema and prev_cci < prev_cci_ema) and \
+           (close > ema and cci > cci_ema):
+
+            signals.append("Long Trade")
+            current_position = "Long Trade"
+
+        # =========================
+        # 🔴 SHORT TRADE (NEW ENTRY)
+        # =========================
+        elif (prev_close > prev_ema and prev_cci > prev_cci_ema) and \
+             (close < ema and cci < cci_ema):
+
+            signals.append("Short Trade")
+            current_position = "Short Trade"
+
+        # =========================
+        # 🟢 LONG FAKE TRADE
+        # =========================
+        elif (close > ema and cci > cci_ema):
+            if i >= 3 and all(
+                df["CCI_60"].iloc[j] > df["CCI_EMA"].iloc[j]
+                for j in range(i-3, i)
+            ):
+                signals.append("Long Fake Trade")
+            else:
+                signals.append("No Trade")
+
+        # =========================
+        # 🔴 SHORT FAKE TRADE
+        # =========================
+        elif (close < ema and cci < cci_ema):
+            if i >= 3 and all(
+                df["CCI_60"].iloc[j] < df["CCI_EMA"].iloc[j]
+                for j in range(i-3, i)
+            ):
+                signals.append("Short Fake Trade")
+            else:
+                signals.append("No Trade")
+
+        # =========================
+        # ❌ NO TRADE
+        # =========================
+        else:
+            signals.append("No Trade")
+
+    df["Final_Signal"] = signals
+
     return df
-# Quick test (offline — uses random data)
+    # Quick test (offline — uses random data)
 # df = compute_signals(df)
 # df[["Open_time","Close","CCI_60","EMA7","RSI","Signal"]].tail(5)
 
