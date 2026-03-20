@@ -391,4 +391,3 @@ if os.path.exists("signals.csv"):
     display(log_df.tail(10))
 else:
     print("No signals logged yet. Run the bot to generate signals.")
-the problem is not in "compute_new_signal()" the signals are correct but I am still receiving wrong indication
