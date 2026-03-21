@@ -128,6 +128,13 @@ def compute_new_signal(df):
         cci = df["CCI_60"].iloc[i]
         cci_ema = df["CCI_EMA"].iloc[i]
 
+        # =========================
+        # 🧊 FREEZE CONDITION 
+        # =========================
+        if abs(close - ema) < 2:
+            signals.append(signals[-1])   # keep previous signal
+            continue
+
         # Previous values
         prev_close = df["Close"].iloc[i-1]
         prev_ema = df["EMA7"].iloc[i-1]
